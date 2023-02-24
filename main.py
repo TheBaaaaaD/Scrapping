@@ -1,63 +1,201 @@
 import requests
 from bs4 import BeautifulSoup
+import csv
+import os
+from Data import Data
 
-baseUrl = "https://www.vttrando.fr"
-uri = "/rando-vtt-departements/rando-vtt-38/"
-tempo = ""
-tabDonnees = []
+departement = 1
+baseUrl = 'https://www.vttrando.fr'
+uri = "/rando-vtt-departements/rando-vtt-"
 
-response = requests.get(baseUrl+uri)
 
-if response.ok:
-    swoup=BeautifulSoup(response.text, 'html.parser')
+def getEndpoints(swoup):
+    liens = []
+
+    refs = swoup.find("div", {"class": "em-view-container"})
+    links = refs.findAll("a", {"class": "link-danger"})
+    for link in links:
+        liens.append(link["href"])
     
-    divs = swoup.findAll("a")
-    for div in divs:
-        if str(div["href"]) != tempo:
-            tempo = str(div["href"])
-            if "evenement" in str(div["href"]):
-                response = requests.get(div["href"])
-                if response.ok:
-                    swoup = BeautifulSoup(response.text, 'html.parser')
-                    headers = swoup.findAll("header",{"class":"entry-header"})
-                    for header in headers:
-                        print(header)
-                        nomRando = str(header.find('h1'))
-                        fin = len(str(nomRando))
-                        fin = fin - 5
-                        #nomRando[4:fin]
-#Ajoute les données dans un tableau
-                        tabDonnees.append(nomRando[4:fin])
-                        print(tabDonnees)
-                        #nom = header[index+5:-1]   
-                    with open("F:\DEV\Python\sites.csv","w") as fo:
-                        fo.write(div["href"])
-                    
-    fo.close
+    # for link in links:
+    #     a = link.find("a")
+    #     liens.append(a["href"])
+    return liens
 
-for div in divs:
-    fo = open("F:\DEV\Python\sites.csv","r")
-    #liens = fo.readlines()
-    #print(liens)
+def getInfoByPage(swoup):
+    infosTriees = [swoup]
+    return infosTriees
 
-    for lien in fo:
-        #print(lien)
-#pk lien bug ?
-        response = requests.get(lien)
-        print(response)
-        if response.ok:
-            swoup=BeautifulSoup(response.text, 'html.parser')
-#P1 - Récupérer le nom de la sortie
-            divs = swoup.findAll("header",{"class":"entry-header"})
-            for div in divs:
-                print(div)
-    fo.close
-    #refs = div.findAll("a")
-    #divs = swoup.findAll("div",{"class": "js-scroll-to-top-anchor css-6xup2u"})
+def swoup(url, process):
+    response = requests.get(url)
+    if response.ok:
+        print("yes")
+        soup = BeautifulSoup(response.text, 'html.parser')
+        return process(soup)
+    return []
+
+
+def fileReader(file):
+    result = []
+    with open(file, 'r', encoding="UTF8", newline="") as f:
+        reader = csv.DictReader(f)
+        for line in reader:
+           result.append(line) 
+    return result
+
+def fileWriterLinks(file, fieldnames, data):
+    with open(file, 'w', encoding="UTF8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        for i in data:
+            f.write(i+"\n")
+    return fileReader(file)
+
+def fileWriterLinksAlreadyExist(file, data):
+    with open(file, 'a+', encoding="UTF8", newline="") as f:
+        # writer = csv.DictWriter(f, fieldnames=fieldnames)
+        # writer.writeheader()
+        for i in data:
+            f.write(i+"\n")
+    return fileReader(file)
+
+def fileWriterData(file, fieldnames, data):
+    with open(file, 'w', encoding="UTF8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
+    return fileReader(file)
+
+def tryToCleanOrReturnBlank(str):
+    try:
+        result = str.getText().strip()
+    except:
+        result = ''
+    return result
+
+# def getElements(lien):
+#     data = []
+#     response = requests.get(lien)
+
+#     soup = BeautifulSoup(response.text,'html.parser')
+#     nom = tryToCleanOrReturnBlank(soup.find("h1"))
+#     date = tryToCleanOrReturnBlank(soup.find("span",{"class":"fs-5"}))
+#     heure = tryToCleanOrReturnBlank(soup.find("div",{"class":"em-event-time"}))
+#     adresse = soup.find("div",{"class":"em-event-location"})
+#     typeEvenement = tryToCleanOrReturnBlank(soup.find("ul",{"class":"event-categories"}))
+#     informations = tryToCleanOrReturnBlank(soup.find("section",{"class":"em-event-content"}))
+#     contacts = tryToCleanOrReturnBlank(soup.find("div",{"class":"border-start ps-3"}))
+
+#     try:
+# #Adresses
+#         adress = adresse.getText()
+#         cleanArrAdress = []
+#         for ele in str(adress).split("\n"):
+#             if ele != "":
+#                     cleanArrAdress.append(ele.strip())
+        
+#         realAdresse = cleanArrAdress[0] + cleanArrAdress[1]
+#         realDepartment = cleanArrAdress[2]
+#         realRegion = cleanArrAdress[3]
+#         realCountry = cleanArrAdress[4]
+#     except:
+
+#         adress = ""
+#         realAdress =""
+#         realCountry =""
+#         cleanArrAdress = []
+
+# #Contacts
+#     try:
+#         cleanContact = []
+#         for ele in str(contacts).split("\n"):
+#             if ele != "":
+#                     cleanContact.append(ele.strip())
+
+#         del cleanContact[0]        
+#         personneContact = cleanArrAdress[0]
+#         telephone = cleanContact[1]
+#         mail = cleanContact[2]
+#         club = cleanContact[3]
+#         siteInternet = cleanContact[4]
+#     except:   
+#         personneContact = ""
+#         telephone =""
+#         mail =""
+#         club = ""
+#         siteInternet = ""
+#         cleanContact = []
+
+#     adresse = " ".join(cleanArrAdress)
+
+#     cleanInformations = []
+#     for ele in str(informations).split("\n"):
+#             if ele != "":
+#                     cleanInformations.append(ele.lstrip("\n").lstrip(","))
     
+#     cleanTypeEvt = []
+#     for ele in str(typeEvenement).split("\n"):
+#             if ele != "":
+#                     cleanTypeEvt.append(ele.lstrip(" "))
 
+#     typeEvenement = " ".join(cleanTypeEvt)
 
+#     informations = " ".join(cleanInformations)
+# #passer data en objets
+#     fiche = {
+#         "nom" : nom,
+#         "date" : date,
+#         "heure" : heure,
+#         "adresse" : adresse,
+#         "typeEvenement" : typeEvenement,
+#         "departement" : realDepartment,
+#         "region" : realRegion,
+#         "informations" : informations,
+#         "contact" : personneContact,
+#         "telephone" : telephone,
+#         "mail" : mail,
+#         "club" : club,
+#         "siteInternet" : siteInternet
+#     }
+    
+#     data.append(fiche)
 
-    #print(swoup)
+#     return data
 
-#print(response)
+for compteurD in range(1,99):
+    if compteurD < 10:
+        departement = "0"+str(compteurD)
+        response = requests.get(baseUrl + uri + str(departement)+"/")
+    else:
+        departement = str(compteurD)
+        response = requests.get(baseUrl + uri + str(departement)+"/")
+
+    print("réponse = " + str(response))
+    if response.ok:
+        fields = ['lien']
+        liens = []
+        infos = []
+        liens = swoup(baseUrl + uri + str(departement)+"/",getEndpoints)
+        #print(liens)
+
+        print(os.path.exists("links.csv"))
+
+        if os.path.isfile("links.csv"):
+            fileWriterLinksAlreadyExist('links.csv', liens)
+            print("exist")
+
+        else:
+            fileWriterLinks('links.csv', fields, liens)
+            print("exist pas")
+
+        lignes = []
+        for link in fileReader('links.csv'):
+            data = Data(link["lien"])
+            data.getElements()
+            lignes.extend(data.data)
+
+        fileWriterData('infos.csv',data.fieldsNames,lignes)
+
+        if compteurD == 10:
+            exit()        
+exit()
